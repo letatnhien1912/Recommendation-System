@@ -1,7 +1,4 @@
-from fastapi import FastAPI, Request, Form, Query
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 import pandas as pd
@@ -17,7 +14,6 @@ from RecSys import TDS_RecSysTraining
 import queries, server_info
 
 from typing import Optional
-from datetime import date
 
 ### Class settings
 class Customer(BaseModel):
