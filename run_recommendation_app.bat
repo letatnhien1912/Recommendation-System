@@ -1,1 +1,0 @@
-uvicorn main:app --host localhost --port 8000 --workers 8
