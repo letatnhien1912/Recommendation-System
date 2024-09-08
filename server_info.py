@@ -1,0 +1,5 @@
+DB_SERVER=r'103.72.98.143'
+DB_NAME=r'ThamDangStore'
+DB_PORT=r'1433'
+DB_UID=r'thamdangrp'
+DB_PWD=r'td@1234'
