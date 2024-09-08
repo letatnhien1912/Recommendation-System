@@ -1,0 +1,5 @@
+DB_SERVER='your_server_info'
+DB_NAME='your_server_info'
+DB_PORT='your_server_info'
+DB_UID='your_server_info'
+DB_PWD='your_server_info'
