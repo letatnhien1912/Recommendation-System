@@ -1,0 +1,323 @@
+{% extends "layout.html" %}
+
+{% block title %}Report{% endblock %}
+
+{% block sidebar %}
+<ul class="nav nav-secondary">
+    <li class="nav-item">
+        <a href="/asset" aria-expanded="false">
+            <i class="fas fa-home"></i>
+            <p>Báo cáo Đề xuất thông minh</p>
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block pagename %}Báo cáo Đề xuất thông minh{% endblock %}
+
+{% block inner %}
+<div class="row">
+  <div class="col-md-6">
+
+    <!-- Statistics Table -->
+    <div class="card">
+        <div class="card-header">
+          <div class="row">
+            <div class="col">
+                  <div class="card-title">Bảng thống kê</div>
+            </div>
+            <div class="col card-category" style="text-align: right;">
+              {{ from_date|format_date }} - {{ to_date|format_date }}
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-filter">
+            <form enctype="multipart/form-data" action="/recommendation_report" method="post">
+              <div>
+                <input type="date" name="from_date" class="btn btn-primary btn-border btn-sm" required
+                >  -  <input type="date" name="to_date" class="btn btn-primary btn-border btn-sm" required>
+                <select class="btn btn-primary btn-border btn-sm" name="dateformat" required>
+                  <option value="yyyy">Năm</option>
+                  <option value="yyyy-MM">Tháng</option>
+                  <option value="yyyy-MM-dd" selected>Ngày</option>
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary">Lọc ngày</button>
+              </div>
+            </form>
+          </div>
+          <table class="table mt-3">
+            <thead>
+              <tr>
+                <th scope="col" style="text-transform: none;">Chỉ số</th>
+                <th scope="col" style="text-transform: none;">Đề xuất mua cùng</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Số sản phẩm đề xuất</td>
+                <td>{{ agg_stat.distinct_product|format_number }}</td>
+              </tr>
+              <tr>
+                <td>Khách hàng tiếp cận</td>
+                <td>{{ agg_stat.distinct_guest|format_number }}</td>
+              </tr>
+              <tr>
+                <td>Lượt hiển thị</td>
+                <td>{{ agg_stat.impression|format_number }}</td>
+              </tr>
+              <tr>
+                <td>Lượt quan tâm</td>
+                <td>{{ agg_stat.ask_info|format_number }}</td>
+              </tr>
+              <tr>
+                <td>Thêm giỏ hàng</td>
+                <td>{{ agg_stat.add_cart|format_number }}</td>
+              </tr>
+              <tr>
+                <td>Đơn thành công</td>
+                <td>{{ agg_stat.success_order|format_number }}</td>
+              </tr>
+              <tr>
+                <td>Doanh thu</td>
+                <td>{{ agg_stat.revenue|format_money }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+    </div>
+  </div>
+    <!-- Bar Chart -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Hiệu quả đề xuất</div>
+        </div>
+
+        <div class="card-body">
+          <div class="chart-container" style="position: relative; height:300px; width:100%;">
+            <canvas id="CrossSellBarChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+</div>
+
+<div class="row">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Hiệu quả theo thời gian</div>
+    </div>
+    <div class="card-body">
+      <div class="chart-container">
+        <canvas id="performanceLineChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script> 
+  var ctx_cs = document.getElementById('CrossSellBarChart'),
+      ctx_lc = document.getElementById("performanceLineChart"),
+      // Bar Chart data
+      data_cs = {
+        labels: ['Quan tâm', 'Thêm giỏ hàng', 'Mua thành công'],
+        datasets: [
+          {
+            label: 'Số lượng',
+            data: [
+              {{ agg_stat.ask_info }},
+              {{ agg_stat.add_cart }},
+              {{ agg_stat.success_order }}
+            ],
+            borderColor: '#1d7af3',
+            backgroundColor: '#1d7af3',
+            yAxisID: 'left-y-axis',
+            order: 1
+          },
+          {
+            label: 'Tỉ lệ trên hiển thị (%)',
+            data: [
+              {{ agg_stat.ask_impress_cvr * 100 }},
+              {{ agg_stat.cart_impress_cvr * 100 }},
+              {{ agg_stat.order_impress_cvr * 100 }}
+            ],
+            borderColor: '#f3545d',
+            backgroundColor: '#f3545d',
+            type: 'line',
+            yAxisID: 'right-y-axis',
+            order: 0
+          }
+        ]
+      },
+
+      // performanceLineChart data
+      data_lc = {
+        labels: {{ cross_sell_stat.timeline.tolist() | tojson }},
+        datasets: [
+          {
+            label: 'Doanh thu',
+            data: {{ cross_sell_stat.revenue.tolist() | tojson }},
+            borderColor: '#1d7af3',
+            backgroundColor: '#1d7af3',
+            yAxisID: 'right-y-axis',
+            order: 3
+          },
+          {
+            label: "Quan tâm",
+            borderColor: "#f3545d",
+            pointBorderColor: "#FFF",
+            pointBackgroundColor: '#f3545d',
+            pointBorderWidth: 1,
+            pointHoverRadius: 4,
+            pointHoverBorderWidth: 2,
+            pointRadius: 3,
+            backgroundColor: "transparent",
+            fill: true,
+            borderWidth: 2,
+            data: {{ cross_sell_stat.ask_info.tolist() | tojson }},
+            type: 'line',
+            yAxisID: 'left-y-axis',
+            order: 0
+          },
+          {
+            label: "Thêm giỏ hàng",
+            borderColor: "#EABE3B",
+            pointBorderColor: "#FFF",
+            pointBackgroundColor: "#EABE3B",
+            pointBorderWidth: 1,
+            pointHoverRadius: 4,
+            pointHoverBorderWidth: 2,
+            pointRadius: 3,
+            backgroundColor: "transparent",
+            fill: true,
+            borderWidth: 2,
+            data: {{ cross_sell_stat.add_cart.tolist() | tojson }},
+            type: 'line',
+            yAxisID: 'left-y-axis',
+            order: 1
+          },
+          {
+            label: "Mua thành công",
+            borderColor: "#16c7b5",
+            pointBorderColor: "#FFF",
+            pointBackgroundColor: "#16c7b5",
+            pointBorderWidth: 1,
+            pointHoverRadius: 4,
+            pointHoverBorderWidth: 2,
+            pointRadius: 3,
+            backgroundColor: "transparent",
+            fill: true,
+            borderWidth: 2,
+            data: {{ cross_sell_stat.success_order.tolist() | tojson }},
+            type: 'line',
+            yAxisID: 'left-y-axis',
+            order: 2
+          },
+        ],
+      };
+
+  // Cross Sell Bar Chart
+  var myCSchart = new Chart(ctx_cs, {
+    type: 'bar',
+    data: data_cs,
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'top',
+        }
+      },
+      scales: {
+        'left-y-axis': {
+          type: 'linear',
+          position: 'left',
+          ticks: {
+            beginAtZero: true,
+            min: 0,
+            max: Math.max(
+              {{ agg_stat.ask_info }},
+              {{ agg_stat.add_cart }},
+              {{ agg_stat.success_order }}
+            ) * 1.1,
+            stepSize: 10
+          }
+        },
+        'right-y-axis': {
+          type: 'linear',
+          position: 'right',
+          ticks: {
+            beginAtZero: true,
+            min: 0,
+            max: Math.max(
+              {{ agg_stat.ask_impress_cvr * 100 }},
+              {{ agg_stat.cart_impress_cvr * 100 }},
+              {{ agg_stat.order_impress_cvr * 100 }}
+            ) * 1.1,
+            stepSize: 10
+          }
+        },
+        x: {
+          stacked: true
+        }
+      }
+    },
+  });
+
+  // Performance Line Chart
+  var myPeformanceLineChart = new Chart(ctx_lc, {
+    type: "bar",
+    data: data_lc,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "top",
+        },
+        tooltips: {
+            bodySpacing: 4,
+            mode: "nearest",
+            intersect: 0,
+            position: "nearest",
+            xPadding: 10,
+            yPadding: 10,
+            caretPadding: 10,
+          }
+      },
+      scales: {
+        'left-y-axis': {
+          type: 'linear',
+          position: 'left',
+          ticks: {
+            beginAtZero: true,
+            min: 0,
+            max: {{ cross_sell_stat.ask_info.tolist() | max }} * 1.1,
+            stepSize: ({{ cross_sell_stat.ask_info.tolist() | max }} * 1.1) / 5
+          }
+        },
+        'right-y-axis': {
+          type: 'linear',
+          position: 'right',
+          ticks: {
+            beginAtZero: true,
+            min: 0,
+            max: {{ cross_sell_stat.revenue.tolist() | max }} * 1.1,
+            stepSize: ({{ cross_sell_stat.revenue.tolist() | max }} * 1.1) / 5
+          }
+        },
+        x: {
+          stacked: true
+        }
+      },
+      layout: {
+        padding: { left: 15, right: 15, top: 15, bottom: 15 },
+      },
+    },
+  });
+</script>
+
+{% endblock %}
