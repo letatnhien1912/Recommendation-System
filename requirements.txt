@@ -4,8 +4,4 @@ uvicorn
 pydantic
 sqlalchemy
 scikit-surprise
-python-multipart
-multipart
 pandas
-numpy
-jinja2

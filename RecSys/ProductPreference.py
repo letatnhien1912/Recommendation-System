@@ -15,18 +15,22 @@ class ProductInfo:
         self.rating_dataset = os.path.join(base_path, '../dataset/rating_dataset.csv')
         self.product_dataset = os.path.join(base_path, '../dataset/product_dataset.csv')
         self.purchase_dataset = os.path.join(base_path, '../dataset/purchase_dataset.csv')
-
+        self.evaluation_rating_dataset = os.path.join(base_path, '../dataset/rating_dataset_evaluation.csv')
+        
         self.productID_to_name = {}
         self.name_to_productID = {}
     
-    def loadRatingData(self):
+    def loadRatingData(self, for_evaluation=None):
         ratingsDataset = 0
         self.productID_to_name = {}
         self.name_to_productID = {}
 
         reader = Reader(line_format='user item rating', sep=',', skip_lines=1)
 
-        ratingsDataset = Dataset.load_from_file(self.rating_dataset, reader=reader)
+        if for_evaluation:
+            ratingsDataset = Dataset.load_from_file(self.evaluation_rating_dataset, reader=reader)
+        else:
+            ratingsDataset = Dataset.load_from_file(self.rating_dataset, reader=reader)
 
         with open(self.product_dataset, newline='', encoding='ISO-8859-1') as csvfile:
                 productReader = csv.reader(csvfile)

@@ -1,6 +1,6 @@
 from surprise import AlgoBase
 from surprise import PredictionImpossible
-from RecSys.ProductPreference import ProductInfo
+from .ProductPreference import ProductInfo
 import math
 import numpy as np
 import heapq
