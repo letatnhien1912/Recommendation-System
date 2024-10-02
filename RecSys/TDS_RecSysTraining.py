@@ -38,9 +38,23 @@ def content_filter_recsys():
     save_model('../app/content_knn_model.pkl', algo)
     print("\nContent-based Filtering model saved.")
 
+def cookie_content_filter_recsys():
+    print("Loading cookie dataset...")
+    ml = ProductInfo()
+    data = ml.loadCookieRatingData()
+    full_trainSet = data.build_full_trainset()
+
+    # Content KNN Algorithm
+    algo = ContentKNNAlgorithm(k=20)
+    algo.fit(full_trainSet)
+
+    save_model('../app/cookie_content_knn_model.pkl', algo)
+    print("\nContent-based Filtering model for cookie saved.")
+
 def main():
     collab_filter_recsys()
     content_filter_recsys()
+    cookie_content_filter_recsys()
     print('\nRecsys models saved.')
 
 if __name__ == "__main__":

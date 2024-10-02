@@ -113,11 +113,45 @@ recsys_dataset_refresh = """WITH facebook_preference AS (
     UNION
     SELECT CustomerId, ProductId, action_type, preference_score, recency FROM order_preference WHERE preference_score > 0"""
 
-recsys_product_dataset = """select pro.Id productId, pro.NameUniCode productName, STRING_AGG(Tag.NameUnicode, '|') tag, pro.Active
-    from ProductTags protag
-        join Tags tag on protag.SubId = tag.Id
-        right join Product pro on protag.MainId = pro.Id
-    group by pro.Id, pro.NameUniCode, pro.Active"""
+recsys_product_preference = """WITH facebook_preference AS (
+        SELECT facebookproduct.SubId ProductId,
+            IIF(facebooklog.Item = 'reaction', 
+                IIF(facebooklog.ReactionType IN ('like','wow','care','love'), 1, 0),
+            IIF(facebooklog.Item = 'share', 4, 
+            IIF(facebooklog.Item = 'comment'
+                AND facebooklog.Intent IN ('GetFit','GetProductInfo','AddCart',
+                'HoldCart','ConfirmOrder','CheckoutCart','GetImage'), 3, 0)        
+                )) preference_score,
+            DATEDIFF(DAY, facebooklog.DateInserted, GETDATE()) recency
+        FROM FacebookLogActivity facebooklog
+            JOIN FacebookPostProduct facebookproduct ON facebooklog.PostId = facebookproduct.MainId
+        WHERE facebooklog.Verb = 'add'
+            AND facebooklog.Item IN ('reaction','share','comment')),
+
+order_preference AS (
+    SELECT item.ProductId,
+        (IIF(StatusId = 10, 7,
+        IIF(IsAddCart = 1, 5, 0)) * Quantity) preference_score,
+        DATEDIFF(day,item.CreateTime,GETDATE()) recency
+    FROM Orders ord
+        JOIN OrdersItem item ON ord.Id = item.OrdersId)
+
+, preference AS (SELECT ProductId, preference_score, recency FROM facebook_preference WHERE preference_score > 0
+UNION
+SELECT ProductId, preference_score, recency FROM order_preference WHERE preference_score > 0)
+
+SELECT pre.*, pro.CategoryId
+FROM preference pre
+JOIN Product pro ON pre.ProductId = pro.Id"""
+
+recsys_product_dataset = """select pro.Id productId, pro.NameUniCode productName, STRING_AGG(Tag.NameUnicode, '|') tag, pro.Active, proquant.Quantity
+from ProductTags protag
+    join Tags tag on protag.SubId = tag.Id
+    right join Product pro on protag.MainId = pro.Id
+    right join (
+        select ProductId, sum(Quantity) Quantity from ProductColor group by ProductId
+    ) as proquant on pro.Id = proquant.ProductId
+group by pro.Id, pro.NameUniCode, pro.Active, proquant.Quantity"""
 
 recsys_purchase_dataset = """select distinct CustomerId, ProductId
     from OrdersItem item
@@ -127,3 +161,26 @@ recsys_purchase_dataset = """select distinct CustomerId, ProductId
         and ProductId is not null"""
 
 recsys_tag_dataset = "select Id, NameUnicode from Tags"
+
+recsys_cookie_dataset = """with a as (
+    select GuestId CookieId, RefId ProductId, Count ViewCount, DATEDIFF(DAY, sta.CreateTime, GETDATE()) recency
+    from StatisticRef sta
+    join Product pro on sta.RefId = pro.Id
+    where GuestId is not null
+        and GuestId like 'SS_%'
+),
+
+lastest_record as (
+    select GuestId CookieId, max(CreateTime) lastest_date
+    from StatisticRef
+        where GuestId is not null
+            and GuestId like 'SS_%'
+    group by GuestId
+)
+
+select a.CookieId, a.ProductId, SUM((1 - (recency*1.0 / b.max_recency)) * ViewCount) preference_score
+from a
+join lastest_record c on a.CookieId = c.CookieId,
+(select max(recency) max_recency from a) as b
+where c.lastest_date >= DATEADD(MONTH, -6, GETDATE())
+group by a.CookieId, a.ProductId"""

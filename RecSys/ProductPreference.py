@@ -15,22 +15,19 @@ class ProductInfo:
         self.rating_dataset = os.path.join(base_path, '../dataset/rating_dataset.csv')
         self.product_dataset = os.path.join(base_path, '../dataset/product_dataset.csv')
         self.purchase_dataset = os.path.join(base_path, '../dataset/purchase_dataset.csv')
-        self.evaluation_rating_dataset = os.path.join(base_path, '../dataset/rating_dataset_evaluation.csv')
-        
+        self.cookie_dataset = os.path.join(base_path, '../dataset/cookie_rating_dataset.csv')
+
         self.productID_to_name = {}
         self.name_to_productID = {}
     
-    def loadRatingData(self, for_evaluation=None):
+    def loadRatingData(self):
         ratingsDataset = 0
         self.productID_to_name = {}
         self.name_to_productID = {}
 
         reader = Reader(line_format='user item rating', sep=',', skip_lines=1)
 
-        if for_evaluation:
-            ratingsDataset = Dataset.load_from_file(self.evaluation_rating_dataset, reader=reader)
-        else:
-            ratingsDataset = Dataset.load_from_file(self.rating_dataset, reader=reader)
+        ratingsDataset = Dataset.load_from_file(self.rating_dataset, reader=reader)
 
         with open(self.product_dataset, newline='', encoding='ISO-8859-1') as csvfile:
                 productReader = csv.reader(csvfile)
@@ -155,3 +152,72 @@ class ProductInfo:
                     productID = int(row[1])
                     purchased_items.append(productID)
         return purchased_items
+    
+    def getInstockProductIDs(self):
+        # Get active product ids from the first column of product_dataset csv file
+        product_ids = []
+        with open(self.product_dataset, newline='', encoding='ISO-8859-1') as csvfile:
+            productReader = csv.reader(csvfile)
+            next(productReader)  # Skip header line
+            for row in productReader:
+                if int(row[4]) > 0:
+                    productID = int(row[0])
+                    product_ids.append(productID)
+        return product_ids
+
+# Cookie User
+    def loadCookieRatingData(self):
+        ratingsDataset = 0
+        self.productID_to_name = {}
+        self.name_to_productID = {}
+
+        reader = Reader(line_format='user item rating', sep=',', skip_lines=1)
+
+        ratingsDataset = Dataset.load_from_file(self.cookie_dataset, reader=reader)
+
+        with open(self.product_dataset, newline='', encoding='ISO-8859-1') as csvfile:
+                productReader = csv.reader(csvfile)
+                next(productReader)  #Skip header line
+                for row in productReader:
+                    productID = int(row[0])
+                    productName = row[1]
+                    self.productID_to_name[productID] = productName
+                    self.name_to_productID[productName] = productID
+
+        return ratingsDataset
+    
+    def getCookieRatings(self, user):
+        userRatings = []
+        hitUser = False
+        with open(self.cookie_dataset, newline='') as csvfile:
+            ratingReader = csv.reader(csvfile)
+            next(ratingReader)
+            for row in ratingReader:
+                userID = int(row[0])
+                if (user == userID):
+                    productID = int(row[1])
+                    rating = float(row[2])
+                    userRatings.append((productID, rating))
+                    hitUser = True
+                if (hitUser and (user != userID)):
+                    break
+
+        return userRatings
+
+    def getCookiePopularityRanks(self):
+        ratings = defaultdict(int)
+        rankings = defaultdict(int)
+        with open(self.cookie_dataset, newline='') as csvfile:
+            ratingReader = csv.reader(csvfile)
+            next(ratingReader)
+            for row in ratingReader:
+                try:
+                    productID = int(float(row[1]))  # Convert to float first, then to int
+                    ratings[productID] += 1
+                except ValueError:
+                    print(f"Skipping row with invalid productID: {row[1]}")
+        rank = 1
+        for productID, ratingCount in sorted(ratings.items(), key=lambda x: x[1], reverse=True):
+            rankings[productID] = rank
+            rank += 1
+        return rankings

@@ -1,6 +1,6 @@
 from surprise import AlgoBase
 from surprise import PredictionImpossible
-from .ProductPreference import ProductInfo
+from RecSys.ProductPreference import ProductInfo
 import math
 import numpy as np
 import heapq
@@ -80,3 +80,21 @@ class ContentKNNAlgorithm(AlgoBase):
         predictedRating = weightedSum / simTotal
 
         return predictedRating
+    
+    def get_similar_items(self, i, top_n=10):
+        """Get top-N most similar items to the given itemID based on content similarity."""
+        
+        # Convert the raw itemID to the internal item index
+        inner_id = self.trainset.to_inner_iid(str(i))
+
+        # Get similarity scores for the item with all other items
+        similarity_scores = list(enumerate(self.similarities[inner_id]))
+
+        # Exclude the item itself from the similarity list and find the top-N most similar items
+        similarity_scores = [(item, score) for item, score in similarity_scores if item != inner_id]
+        top_n_similar = heapq.nlargest(top_n, similarity_scores, key=lambda t: t[1])
+
+        # Convert inner ids back to raw itemIDs and return the results
+        top_n_similar = [self.trainset.to_raw_iid(item) for item, score in top_n_similar]
+
+        return top_n_similar

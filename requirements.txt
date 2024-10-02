@@ -5,3 +5,4 @@ pydantic
 sqlalchemy
 scikit-surprise
 pandas
+pyodbc
